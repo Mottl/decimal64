@@ -3,6 +3,8 @@ use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 
 mod arithmetic;
+#[cfg(feature = "bincode")]
+pub mod bincode;
 pub mod error;
 mod macros;
 pub mod math;
@@ -31,8 +33,6 @@ const POW5_U128: [u128; 9] = [1, 5, 25, 125, 625, 3125, 15625, 78125, 390625];
 
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(transparent)]
-#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
-#[cfg_attr(feature = "bincode", bincode(bound = ""))]
 pub struct DecimalU64<S>(pub u64, PhantomData<S>);
 
 impl<S: ScaleMetrics> Display for DecimalU64<S> {
@@ -440,6 +440,12 @@ impl<S: ScaleMetrics> DecimalU64<S> {
         }
 
         end
+    }
+}
+
+impl<S: ScaleMetrics> From<&str> for DecimalU64<S> {
+    fn from(value: &str) -> Self {
+        Self::from_str(value).unwrap()
     }
 }
 
