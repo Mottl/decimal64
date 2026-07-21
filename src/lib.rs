@@ -31,6 +31,8 @@ const POW5_U128: [u128; 9] = [1, 5, 25, 125, 625, 3125, 15625, 78125, 390625];
 
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(transparent)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "bincode", bincode(bound = ""))]
 pub struct DecimalU64<S>(pub u64, PhantomData<S>);
 
 impl<S: ScaleMetrics> Display for DecimalU64<S> {

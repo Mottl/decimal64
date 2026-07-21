@@ -14,10 +14,12 @@ rust-version = "1.85.1"
 [features]
 default = []
 serde = ["dep:serde"]
+bincode = ["dep:bincode"]
 
 [dependencies]
 thiserror = "2.0.12"
 serde = { version = "1.0.217", features = ["derive"],  optional = true }
+bincode = { version = "2.0.1",  optional = true }
 
 [dev-dependencies]
 anyhow = "1.0.97"
@@ -35,6 +37,11 @@ harness = false
 [[bench]]
 name = "mul"
 path = "benches/mul.rs"
+harness = false
+
+[[bench]]
+name = "div"
+path = "benches/div.rs"
 harness = false
 
 [[bench]]
