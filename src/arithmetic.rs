@@ -1,6 +1,6 @@
 use crate::{DecimalU64, ScaleMetrics};
 use std::iter::Sum;
-use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 impl<S: ScaleMetrics> Mul for DecimalU64<S> {
     type Output = DecimalU64<S>;
@@ -152,6 +152,88 @@ impl<S: ScaleMetrics> DecimalU64<S> {
         }
     }
 }
+
+macro_rules! impl_decimal_primitive_ops {
+    ($($rhs_ty:ident),*) => {
+        $(
+            impl<S: ScaleMetrics> Add<$rhs_ty> for DecimalU64<S> {
+                type Output = DecimalU64<S>;
+
+                #[inline]
+                fn add(self, rhs: $rhs_ty) -> Self::Output {
+                    let scaled_rhs = (rhs as u64) * S::SCALE_FACTOR;
+                    Self::new(self.0 + scaled_rhs)
+                }
+            }
+
+            impl<S: ScaleMetrics> AddAssign<$rhs_ty> for DecimalU64<S> {
+                #[inline]
+                fn add_assign(&mut self, rhs: $rhs_ty) {
+                    let scaled_rhs = (rhs as u64) * S::SCALE_FACTOR;
+                    self.0 += scaled_rhs;
+                }
+            }
+
+            impl<S: ScaleMetrics> Sub<$rhs_ty> for DecimalU64<S> {
+                type Output = DecimalU64<S>;
+
+                #[inline]
+                fn sub(self, rhs: $rhs_ty) -> Self::Output {
+                    let scaled_rhs = (rhs as u64) * S::SCALE_FACTOR;
+                    Self::new(self.0 - scaled_rhs)
+                }
+            }
+
+            impl<S: ScaleMetrics> SubAssign<$rhs_ty> for DecimalU64<S> {
+                #[inline]
+                fn sub_assign(&mut self, rhs: $rhs_ty) {
+                    let scaled_rhs = (rhs as u64) * S::SCALE_FACTOR;
+                    self.0 -= scaled_rhs;
+                }
+            }
+
+            impl<S: ScaleMetrics> Mul<$rhs_ty> for DecimalU64<S> {
+                type Output = DecimalU64<S>;
+
+                #[inline]
+                fn mul(self, rhs: $rhs_ty) -> Self::Output {
+                    Self::new(self.0 * (rhs as u64))
+                }
+            }
+
+            impl<S: ScaleMetrics> MulAssign<$rhs_ty> for DecimalU64<S> {
+                #[inline]
+                fn mul_assign(&mut self, rhs: $rhs_ty) {
+                    self.0 *= rhs as u64;
+                }
+            }
+
+            impl<S: ScaleMetrics> Div<$rhs_ty> for DecimalU64<S> {
+                type Output = DecimalU64<S>;
+
+                #[inline]
+                fn div(self, rhs: $rhs_ty) -> Self::Output {
+                    assert!(rhs != 0, "Division by zero");
+                    Self::new(self.0 / (rhs as u64))
+                }
+            }
+
+            impl<S: ScaleMetrics> DivAssign<$rhs_ty> for DecimalU64<S> {
+                #[inline]
+                fn div_assign(&mut self, rhs: $rhs_ty) {
+                    assert!(rhs != 0, "Division by zero");
+                    self.0 /= rhs as u64;
+                }
+            }
+        )*
+    };
+}
+
+impl_decimal_primitive_ops!(u8);
+impl_decimal_primitive_ops!(u16);
+impl_decimal_primitive_ops!(u32);
+impl_decimal_primitive_ops!(u64);
+impl_decimal_primitive_ops!(usize);
 
 #[cfg(test)]
 mod tests {
@@ -305,6 +387,99 @@ mod tests {
             let values: Vec<DecimalU64<U8>> = vec![DecimalU64::ONE, DecimalU64::TWO];
             let sum = values.iter().sum::<DecimalU64<U8>>();
             assert_eq!(sum, DecimalU64::THREE);
+        }
+    }
+}
+
+#[cfg(test)]
+mod primitive_tests {
+    mod mul {
+        use crate::{DecimalU64, U8};
+        use rstest_macros::rstest;
+
+        #[rstest]
+        #[case("0.2", 50000_u32, "10000.00000000")]
+        #[case("1.50000000", 2_u32, "3.00000000")]
+        #[case("0.00000000", 123_u32, "0.00000000")]
+        #[case("123.45678901", 0_u32, "0.00000000")]
+        fn should_mul_primitive(#[case] a: &str, #[case] b: u32, #[case] expected: &str) {
+            let dec_a = DecimalU64::<U8>::from_str(a).unwrap();
+            let result = dec_a * b;
+            assert_eq!(expected, result.to_string());
+        }
+    }
+
+    mod add {
+        use crate::{DecimalU64, U8};
+        use rstest_macros::rstest;
+
+        #[rstest]
+        #[case("0.20000000", 50000_u32, "50000.20000000")]
+        #[case("123.20000000", 0_u32, "123.20000000")]
+        #[case("0.00000000", 1_u32, "1.00000000")]
+        fn should_add_primitive(#[case] a: &str, #[case] b: u32, #[case] expected: &str) {
+            let dec_a = DecimalU64::<U8>::from_str(a).unwrap();
+            let result = dec_a + b;
+            assert_eq!(expected, result.to_string());
+        }
+    }
+
+    mod sub {
+        use crate::{DecimalU64, U8};
+        use rstest_macros::rstest;
+
+        #[rstest]
+        #[case("50000.20000000", 50000_u16, "0.20000000")]
+        #[case("10.50000000", 2_u16, "8.50000000")]
+        #[case("1.00000000", 1_u16, "0.00000000")]
+        fn should_sub_primitive(#[case] a: &str, #[case] b: u16, #[case] expected: &str) {
+            let dec_a = DecimalU64::<U8>::from_str(a).unwrap();
+            let result = dec_a - b;
+            assert_eq!(expected, result.to_string());
+        }
+    }
+
+    mod div {
+        use crate::{DecimalU64, U8};
+        use rstest_macros::rstest;
+
+        #[rstest]
+        #[case("50000.00000000", 2_u64, "25000.00000000")]
+        #[case("123.45678901", 1_u64, "123.45678901")]
+        #[case("0.00000000", 123_u64, "0.00000000")]
+        #[case("1.00000000", 3_u64, "0.33333333")]
+        fn should_div_primitive(#[case] a: &str, #[case] b: u64, #[case] expected: &str) {
+            let dec_a = DecimalU64::<U8>::from_str(a).unwrap();
+            let result = dec_a / b;
+            assert_eq!(expected, result.to_string());
+        }
+
+        #[test]
+        #[should_panic = "Division by zero"]
+        fn should_panic_if_div_by_primitive_zero() {
+            let dec_a = DecimalU64::<U8>::from_str("123.45678901").unwrap();
+            let _ = dec_a / 0_u64;
+        }
+    }
+
+    mod assign {
+        use crate::{DecimalU64, U8};
+
+        #[test]
+        fn should_assign_primitive_ops() {
+            let mut val = DecimalU64::<U8>::from_str("100.00000000").unwrap();
+
+            val += 50_u64;
+            assert_eq!("150.00000000", val.to_string());
+
+            val -= 20_u64;
+            assert_eq!("130.00000000", val.to_string());
+
+            val *= 2_u64;
+            assert_eq!("260.00000000", val.to_string());
+
+            val /= 4_u64;
+            assert_eq!("65.00000000", val.to_string());
         }
     }
 }
