@@ -449,6 +449,18 @@ impl<S: ScaleMetrics> From<&str> for DecimalU64<S> {
     }
 }
 
+impl<S: ScaleMetrics> From<f32> for DecimalU64<S> {
+    fn from(value: f32) -> Self {
+        Self::from_f64(value as f64).unwrap()
+    }
+}
+
+impl<S: ScaleMetrics> From<f64> for DecimalU64<S> {
+    fn from(value: f64) -> Self {
+        Self::from_f64(value).unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
